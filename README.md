@@ -65,3 +65,37 @@ Jalankan API lokal dengan perintah setup di atas dan gunakan Swagger di `http://
 DET-001 mencari empat kegagalan SSH dari IP sumber yang sama pada satu aset dalam 60 detik. DET-002 mencari lima port TCP tujuan unik dari IP sumber yang sama ke satu IP tujuan pada satu aset dalam 60 detik. Keduanya mengevaluasi data aktual dan simulasi secara terpisah.
 
 Endpoint menerima record terstruktur dari feed yang sudah diproses. Adapter live untuk Wazuh/journald dan sensor pasif Zeek/Suricata masih perlu diintegrasikan dan diuji. Tampilan dashboard hackathon berjalan dengan fixture. Penyimpanan alert, korelasi lintas sumber, dan lifecycle tindak lanjut masuk M4.
+
+## Dashboard utama
+
+Jalankan Uvicorn seperti langkah setup, lalu buka http://127.0.0.1:8000.
+FastAPI menyajikan UI dari folder `dashboard/` melalui `/dashboard/`.
+
+- **Demo browser** memakai skenario dan insiden lokal dari UI
+  [agnigaluhev-svg/AegisOps](https://github.com/agnigaluhev-svg/AegisOps).
+- **Simulasi tersimpan** menampilkan observasi simulasi di SQLite. Jalankan demo M2 untuk mengisi kesehatan host, atau kirim event simulasi lewat API M3.
+- **Observasi lab** menampilkan event aktual dan health collector yang tercatat. Inventaris memakai aset terdaftar. Aset tanpa observasi dalam mode terpilih tampil sebagai Unknown.
+
+Mode backend memuat maksimum 100 event terbaru secara default. Temuan dihitung dari event tersebut memakai kebijakan DET-001 dan DET-002 bawaan. Detail bukti diambil dari endpoint event. Gunakan **Muat ulang** setelah collector atau ingestion dijalankan. Predictive Maintenance dan Incident Management tersedia pada demo browser.
+
+### Demo pusat data kampus
+
+Pada **Demo browser → Overview**, jalankan **Kampus - Dugaan kebocoran web Syariah**. Skenario fiktif berlatar UIN Maulana Malik Ibrahim Malang dan memakai aset sintetis `WEB-SYA-01`.
+
+1. Lihat status web pada event kesehatan dan jalankan replay hingga selesai.
+2. Buka **Cyber Threat Detection** dan pilih **Dugaan akses tidak sah dan transfer keluar tidak wajar**. Bukti mencakup event jaringan, autentikasi, dan transfer keluar. Isi transfer belum diketahui.
+3. Pilih **Buat insiden**, catat hasil pemeriksaan awal, lalu ubah status ke **Dianalisis**.
+4. Untuk membandingkan hasil secara bersih, reset sesi demo dan jalankan **Kampus - Backup terjadwal**. Transfer pembanding memiliki volume yang sama, tetapi tujuan backup telah disetujui dan alert korelasi tidak muncul.
+
+Replay dan korelasi kasus kampus berjalan di browser. Insiden demo tersimpan pada browser yang sama.
+
+Empat replay operasional tambahan tersedia pada pemilih skenario kampus.
+
+| Skenario | Bukti yang memicu peringatan |
+|---|---|
+| SIAKAD lambat saat pengisian KRS | Tiga observasi waktu respons mencapai ambang demo 1.500 ms. |
+| Penyimpanan database akademik hampir penuh | Tiga observasi penggunaan disk mencapai 90%. |
+| Suhu ruang server meningkat | Tiga observasi suhu mencapai 30 °C. |
+| Backup data akademik gagal berulang | Tiga percobaan backup gagal. |
+
+Masing-masing replay menyertakan satu observasi awal normal, lalu tiga observasi yang memenuhi ambang dalam dua menit waktu simulasi. Temuan, bukti, dan rekomendasi tersedia di **Cyber Threat Detection**. Untuk review per kasus, reset sesi demo agar temuan dari replay sebelumnya tidak ikut tampil.

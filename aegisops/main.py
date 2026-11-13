@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -18,6 +20,7 @@ from .store import EventStore
 
 
 MAX_EVENT_BYTES = 64 * 1024
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent / 'dashboard'
 logger = logging.getLogger(__name__)
 
 
@@ -53,6 +56,11 @@ def create_app(database_path: Path) -> FastAPI:
         yield
 
     app = FastAPI(title='AEGISOPS Ingestion', version='0.1.0', lifespan=lifespan)
+    app.mount('/dashboard', StaticFiles(directory=DASHBOARD_DIR, html=True), name='dashboard')
+
+    @app.get('/', include_in_schema=False)
+    def dashboard():
+        return RedirectResponse('/dashboard/')
 
     @app.exception_handler(sqlite3.Error)
     async def storage_error(_: Request, exc: sqlite3.Error):
@@ -105,6 +113,20 @@ def create_app(database_path: Path) -> FastAPI:
         if asset is None:
             raise HTTPException(404, 'Asset not found')
         return health_view(asset, store.latest_host_health(asset_id, simulation), simulation, 300)
+
+    @app.get('/api/dashboard')
+    def dashboard_snapshot(simulation: bool = True, limit: int = Query(100, ge=1, le=250)):
+        events = store.recent_events(simulation, limit)
+        return {
+            'simulation': simulation,
+            'event_limit': limit,
+            'assets': [
+                health_view(asset, store.latest_host_health(asset.asset_id, simulation), simulation, 300)
+                for asset in store.list_assets()
+            ],
+            'events': events,
+            'findings': evaluate(events, DetectionPolicy()),
+        }
 
     return app
 
