@@ -2,13 +2,28 @@
 
 Fondasi ingestion lokal menggunakan Python 3.11+, FastAPI, dan SQLite. Paket rancangan proyek tersedia di [AEGISOPS_agent_docs_v0.1](AEGISOPS_agent_docs_v0.1/README.md).
 
-## Jalankan di PowerShell
+## Mulai cepat di Windows
+
+Siapkan Git dan Python 3.11 atau lebih baru. Jalankan perintah ini di PowerShell:
 
 ```powershell
+git clone https://github.com/azkafariqiuinmalang/aegisops.git
+cd aegisops
 python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn aegisops.main:app --host 127.0.0.1 --port 8000
+```
+
+- Buka [Dashboard AEGISOPS](http://127.0.0.1:8000/dashboard/) dan pilih **Demo browser → Overview** untuk menjalankan simulasi kampus.
+- Buka [Hardware Health](http://127.0.0.1:8000/dashboard/#hardware) untuk telemetri Wokwi atau [Swagger UI](http://127.0.0.1:8000/docs) untuk mencoba API.
+- Jika muncul `WinError 10048`, port sedang dipakai. Hentikan server AEGISOPS sebelumnya dengan **Ctrl+C** di terminalnya atau jalankan server di port `8002` dan gunakan port itu di URL.
+- Jika unduhan Wokwi menampilkan `404`, pastikan kamu membuka port yang dipakai server terbaru. Untuk checkout Git yang sudah ada, tarik `main` terbaru lalu mulai ulang Uvicorn.
+
+### Jalankan pengujian
+
+```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv\Scripts\python.exe -m uvicorn aegisops.main:app --host 127.0.0.1 --port 8000
 ```
 
 SQLite dibuat saat startup di `var/aegisops.sqlite3`. Set `$env:AEGISOPS_DB_PATH` sebelum startup untuk memakai path lain. `.env.example` mendokumentasikan variabel tersebut. Aplikasi membaca environment proses.
@@ -108,6 +123,8 @@ Skenario telemetri menyorot node aset dengan denyut, termasuk SIAKAD, database, 
 
 ### AegisNode dengan Wokwi dan MQTT
 
+File proyek: [sketch.ino](hardware/wokwi/sketch.ino) · [diagram.json](hardware/wokwi/diagram.json) · [libraries.txt](hardware/wokwi/libraries.txt).
+
 1. Buat proyek ESP32 DevKit di Wokwi. Salin sketch.ino dan diagram.json dari hardware/wokwi. Tambahkan library DHT sensor library for ESPx dan PubSubClient dari libraries.txt.
 2. Buat topic unik untuk sesi demo. Di PowerShell, gunakan:
 
@@ -129,3 +146,13 @@ uvicorn aegisops.main:app --host 0.0.0.0 --port "${PORT:-8000}"
 ```
 
 Gunakan deployment demo terisolasi dengan data sintetis. Frontend statis saja tidak menjalankan FastAPI, dan runtime yang menghentikan proses saat idle tidak dapat mempertahankan subscriber MQTT. Untuk menjalankan alur lokal, ikuti perintah Uvicorn dengan bind loopback di atas.
+
+### Deployment Railway
+
+1. Di Railway, pilih **New Project → Deploy from GitHub Repo**, pilih repo ini dan branch `main`. Gunakan root repo.
+2. Isi **Start Command** dengan `uvicorn aegisops.main:app --host 0.0.0.0 --port "$PORT" --workers 1`.
+3. Pasang volume di `/data`, lalu set `AEGISOPS_DB_PATH=/data/aegisops.sqlite3`. Matikan **Serverless** agar subscriber MQTT tetap aktif.
+4. Untuk telemetri, isi `AEGISOPS_MQTT_HOST=broker.hivemq.com`, `AEGISOPS_MQTT_PORT=1883`, dan `AEGISOPS_MQTT_TOPIC` sesuai firmware Wokwi. Gunakan broker publik hanya untuk data sintetis.
+5. Di **Settings → Networking**, pilih **Generate Domain**. Buka `/dashboard/#hardware` di domain tersebut. Jalankan Wokwi, geser suhu DHT22, lalu pastikan suhu dan waktu sampel di dashboard ikut berubah.
+
+Rujukan: [Deploy FastAPI](https://railway.com/guides/fastapi) · [Railway Volumes](https://docs.railway.com/volumes/reference) · [Railway Serverless](https://docs.railway.com/deployments/serverless).
