@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field, ValidationError
 from starlette.concurrency import run_in_threadpool
@@ -17,6 +17,7 @@ from .host_health import HostHealth, health_view
 from .models import Asset, Event, EventInput, Model
 from .security_events import SSHFailure, TCPConnection
 from .store import EventStore
+from .wokwi import WokwiReading, save_reading, start_mqtt
 
 
 MAX_EVENT_BYTES = 64 * 1024
@@ -53,7 +54,13 @@ def create_app(database_path: Path) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         await run_in_threadpool(store.initialize)
-        yield
+        mqtt = start_mqtt(store)
+        try:
+            yield
+        finally:
+            if mqtt:
+                await run_in_threadpool(mqtt.disconnect)
+                await run_in_threadpool(mqtt.loop_stop)
 
     app = FastAPI(title='AEGISOPS Ingestion', version='0.1.0', lifespan=lifespan)
     app.mount('/dashboard', StaticFiles(directory=DASHBOARD_DIR, html=True), name='dashboard')
@@ -113,6 +120,23 @@ def create_app(database_path: Path) -> FastAPI:
         if asset is None:
             raise HTTPException(404, 'Asset not found')
         return health_view(asset, store.latest_host_health(asset_id, simulation), simulation, 300)
+
+    @app.post('/api/hardware/wokwi', response_model=Event, status_code=201)
+    def receive_wokwi(reading: WokwiReading) -> Event:
+        return save_reading(store, reading)
+
+    @app.get('/api/hardware/wokwi', response_model=list[Event])
+    def wokwi_history() -> list[Event]:
+        return store.recent_events(True, 6, 'aegisnode_wokwi_reading')
+
+    @app.get('/api/hardware/wokwi/files/{filename}', include_in_schema=False)
+    def wokwi_project_file(filename: str):
+        if filename not in {'sketch.ino', 'diagram.json', 'libraries.txt'}:
+            raise HTTPException(404, 'Unknown Wokwi project file')
+        path = DASHBOARD_DIR.parent / 'hardware' / 'wokwi' / filename
+        if not path.is_file():
+            raise HTTPException(404, 'Wokwi project file missing')
+        return FileResponse(path, filename=filename, media_type='text/plain')
 
     @app.get('/api/dashboard')
     def dashboard_snapshot(simulation: bool = True, limit: int = Query(100, ge=1, le=250)):

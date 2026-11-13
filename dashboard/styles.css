@@ -11,3 +11,23 @@
 .backend-panel .evidence-row,.backend-json{overflow-wrap:anywhere;white-space:pre-wrap}
 .backend-json{font-size:12px}
 .simulation-banner{flex-wrap:wrap}
+
+.replay-topology{height:280px}
+.replay-topology .topo-node{min-width:0;width:min(132px,30%);padding:6px 3px}
+.replay-topology .topo-endpoint{border-color:var(--accent)}
+.topo-links,.topo-active{fill:none;stroke:var(--line);stroke-width:2;vector-effect:non-scaling-stroke}
+.topo-flow{color:var(--accent)}
+.topo-flow.warning{color:var(--warn)}
+.topo-active{stroke:currentColor;stroke-width:3}
+.topo-packet{fill:currentColor}
+.topo-caption{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:12px;color:var(--muted)}
+.topo-caption strong{color:var(--text)}
+@media(prefers-reduced-motion:reduce){.topo-packet{display:none}}
+.replay-topology{height:360px}
+.topo-endpoint.topo-warning{border-color:var(--warn)}
+.topo-pulse{animation:topo-pulse 1.2s ease-out 3}
+@keyframes topo-pulse{0%,100%{outline:0 solid transparent}45%{outline:5px solid var(--accent)}}
+@media(prefers-reduced-motion:reduce){.topo-pulse{animation:none}}
+.topo-pulse{--pulse-color:var(--accent)}
+.topo-pulse.topo-warning{--pulse-color:var(--warn)}
+@keyframes topo-pulse{0%,100%{outline:0 solid transparent}45%{outline:5px solid var(--pulse-color)}}

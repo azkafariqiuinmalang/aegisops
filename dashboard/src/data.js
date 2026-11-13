@@ -72,8 +72,9 @@ export function buildScenario(type, seed = 20261113, baseTime = Date.now()) {
     }));
     return events;
   }
-  if (type === 'campus' || type === 'campus-backup') {
+  if (['campus', 'campus-egress', 'campus-backup'].includes(type)) {
     const suspicious = type === 'campus';
+    const approvedBackup = type === 'campus-backup';
     const raw = fields => ({ scenario: type, simulation: true, ...fields });
     const sourceIp = '198.51.100.25';
     event(0, {id: 'campus-health', source: 'agent', kind: 'health', src_ip: CAMPUS_WEB.ip,
@@ -91,10 +92,10 @@ export function buildScenario(type, seed = 20261113, baseTime = Date.now()) {
       }
     }
     event(300, {id: 'campus-transfer', source: 'firewall', kind: 'transfer', src_ip: CAMPUS_WEB.ip,
-      dst_ip: suspicious ? '203.0.113.77' : '10.0.1.40', action: 'allow',
+      dst_ip: approvedBackup ? '10.0.1.40' : '203.0.113.77', action: 'allow',
       raw: raw({ direction: 'outbound', bytes_sent: 180 * 1024 ** 2,
-        usual_upper_bytes: 20 * 1024 ** 2, approved_destination: !suspicious,
-        scheduled_backup: !suspicious })});
+        usual_upper_bytes: 20 * 1024 ** 2, approved_destination: approvedBackup,
+        scheduled_backup: approvedBackup })});
     return events;
   }
   for (let i = 0; i < 12; i++) {

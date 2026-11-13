@@ -21,16 +21,23 @@ function campusHealthFindings(events) {
   });
 }
 
-function campusFinding(events, findings) {
+function isCampusEgress(event) {
+  const raw = event.raw;
+  return event.kind === 'transfer' && event.source === 'firewall' &&
+    event.asset_id === CAMPUS_WEB.id && event.src_ip === CAMPUS_WEB.ip &&
+    event.action === 'allow' && Boolean(event.dst_ip) &&
+    raw?.simulation === true && raw.direction === 'outbound' &&
+    raw.approved_destination === false &&
+    Number.isFinite(raw.bytes_sent) && Number.isFinite(raw.usual_upper_bytes) &&
+    raw.usual_upper_bytes >= 0 && raw.bytes_sent > raw.usual_upper_bytes;
+}
+
+function campusFinding(events, findings, transfers) {
   const assetId = CAMPUS_WEB.id;
   const byId = new Map(events.map(event => [event.id, event]));
   const scans = findings.filter(f => f.rule === 'R-SCAN-01' && f.targets.includes(assetId));
   const logins = findings.filter(f => f.rule === 'R-BRUTE-01' && f.targets.includes(assetId));
-  for (const transfer of events) {
-    if (transfer.kind !== 'transfer' || transfer.asset_id !== assetId ||
-        transfer.src_ip !== CAMPUS_WEB.ip || transfer.raw?.direction !== 'outbound' ||
-        transfer.raw.approved_destination !== false ||
-        !(transfer.raw.bytes_sent > transfer.raw.usual_upper_bytes)) continue;
+  for (const transfer of transfers) {
     for (const login of logins) {
       const scan = scans.find(f => f.src_ip === login.src_ip);
       const loginEvents = login.eventIds.map(id => byId.get(id));
@@ -113,8 +120,24 @@ export function detect(events, assets) {
     const newDevice = eventsBySource.find(e => e.kind === 'asset' && e.src_ip?.startsWith('10.0.') && (!knownIps.has(e.src_ip) || !knownMacs.has((e.src_mac || '').toLowerCase())));
     if (newDevice) findings.push({ rule: 'R-NEWDEV-01', src_ip: newDevice.src_ip, title: 'Perangkat baru terdeteksi di jaringan', severity: 'warn', eventIds: [newDevice.id], targets: [], sources: [newDevice.source], reason: `IP ${newDevice.src_ip} dan MAC ${newDevice.src_mac} belum tercatat di inventaris pada segmen terkelola.`, recommendations: ['Verifikasi identitas perangkat dan pemiliknya.', 'Periksa apakah perangkat seharusnya berada di segmen tersebut.', 'Perbarui inventaris setelah verifikasi.'] });
   }
-  const campus = campusFinding(events, findings);
+  const transfers = events.filter(isCampusEgress);
+  const campus = campusFinding(events, findings, transfers);
   if (campus) findings.push(campus);
+  const transfer = transfers.findLast(event => !campus?.eventIds.includes(event.id));
+  if (transfer) findings.push({
+    rule: 'R-CAMPUS-EGRESS',
+    src_ip: transfer.src_ip,
+    title: 'Transfer keluar tidak wajar',
+    severity: 'warn',
+    targets: [CAMPUS_WEB.id],
+    eventIds: [transfer.id],
+    sources: [transfer.source],
+    reason: `Firewall mencatat ${transfer.raw.bytes_sent / 1024 ** 2} MiB keluar dari ${CAMPUS_WEB.id} ke ${transfer.dst_ip}, tujuan yang belum disetujui. Pembanding normal pada fixture adalah ${transfer.raw.usual_upper_bytes / 1024 ** 2} MiB. Isi transfer belum diketahui.`,
+    recommendations: [
+      'Cocokkan tujuan dan waktu transfer dengan jadwal backup serta daftar tujuan yang disetujui.',
+      'Periksa log akses file dan catat hasil verifikasi dalam insiden demo.',
+    ],
+  });
   findings.push(...campusHealthFindings(events));
   return dedupeFindings(findings);
 }

@@ -89,6 +89,10 @@ Pada **Demo browser → Overview**, jalankan **Kampus - Dugaan kebocoran web Sya
 
 Replay dan korelasi kasus kampus berjalan di browser. Insiden demo tersimpan pada browser yang sama.
 
+Peta topologi pada **Overview** dan **Network Monitoring** mengikuti event komunikasi terakhir yang sudah diputar. Panah dan indikator bergerak mengikuti arah sumber ke tujuan. Transfer ke tujuan yang belum disetujui ditandai amber. Saat replay dijeda atau perangkat memakai preferensi pengurangan gerakan, arah tetap terlihat melalui panah dan alamat sumber serta tujuan. Pilih **Lihat event** di bawah peta untuk membuka bukti.
+
+Untuk melihat peringatan dari komunikasi server saja, pilih **Kampus - Transfer keluar tidak wajar**. Web tetap merespons dan replay hanya berisi observasi kesehatan serta catatan transfer firewall. Rule `R-CAMPUS-EGRESS` memicu satu peringatan ketika volume keluar 180 MiB melampaui pembanding simulasi 20 MiB dan tujuan belum disetujui. Pada skenario gabungan, transfer yang sama masuk ke bukti alert korelasi. **Kampus - Backup terjadwal** menggunakan volume yang sama dengan tujuan yang disetujui.
+
 Empat replay operasional tambahan tersedia pada pemilih skenario kampus.
 
 | Skenario | Bukti yang memicu peringatan |
@@ -99,3 +103,29 @@ Empat replay operasional tambahan tersedia pada pemilih skenario kampus.
 | Backup data akademik gagal berulang | Tiga percobaan backup gagal. |
 
 Masing-masing replay menyertakan satu observasi awal normal, lalu tiga observasi yang memenuhi ambang dalam dua menit waktu simulasi. Temuan, bukti, dan rekomendasi tersedia di **Cyber Threat Detection**. Untuk review per kasus, reset sesi demo agar temuan dari replay sebelumnya tidak ikut tampil.
+
+Skenario telemetri menyorot node aset dengan denyut, termasuk SIAKAD, database, pendingin, backup, dan UPS. Nilai terakhir serta tautan **Lihat event** tetap terlihat setelah replay selesai. Skenario DHCP menampilkan arah dari perangkat baru ke segmen jaringan kampus.
+
+### AegisNode dengan Wokwi dan MQTT
+
+1. Buat proyek ESP32 DevKit di Wokwi. Salin sketch.ino dan diagram.json dari hardware/wokwi. Tambahkan library DHT sensor library for ESPx dan PubSubClient dari libraries.txt.
+2. Buat topic unik untuk sesi demo. Di PowerShell, gunakan:
+
+   ```powershell
+   $env:AEGISOPS_MQTT_TOPIC = "aegisops/demo/$([guid]::NewGuid().ToString('N'))/telemetry"
+   $env:AEGISOPS_MQTT_TOPIC
+   ```
+
+   Salin hasilnya ke MQTT_TOPIC dalam sketch. Untuk deployment, set nilai yang sama pada environment service FastAPI. Topic adalah alamat pesan publik. Broker ini hanya untuk data sintetis.
+3. Instal requirements.txt dan jalankan FastAPI. Server memulai subscriber jika AEGISOPS_MQTT_TOPIC diisi. Broker default broker.hivemq.com pada TCP 1883.
+4. Jalankan Wokwi dengan Public IoT Gateway. Buka **Demo browser → Hardware Health** dan cocokkan suhu serta kelembapan dengan Serial Monitor. Ubah slider DHT22 untuk memverifikasi pembaruan. Geser sakelar heartbeat ke kanan untuk menghentikan pengiriman. Panel beralih ke Offline setelah 15 detik tanpa sampel baru.
+
+Alur data adalah ESP32 virtual → MQTT → FastAPI → SQLite → Hardware Health. Pesan MQTT dipublikasikan tanpa retain. Dashboard membaca API dari origin yang sama.
+
+Untuk deployment, gunakan satu proses Uvicorn pada layanan Python atau kontainer yang terus berjalan, izinkan koneksi keluar TCP 1883, dan arahkan AEGISOPS_DB_PATH ke volume persisten yang bisa ditulis. Contoh start command:
+
+```sh
+uvicorn aegisops.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+```
+
+Gunakan deployment demo terisolasi dengan data sintetis. Frontend statis saja tidak menjalankan FastAPI, dan runtime yang menghentikan proses saat idle tidak dapat mempertahankan subscriber MQTT. Untuk menjalankan alur lokal, ikuti perintah Uvicorn dengan bind loopback di atas.

@@ -96,14 +96,15 @@ class EventStore:
             rows = connection.execute('SELECT payload FROM assets ORDER BY asset_id').fetchall()
         return [Asset.model_validate_json(row[0]) for row in rows]
 
-    def recent_events(self, simulation: bool, limit: int) -> list[Event]:
+    def recent_events(self, simulation: bool, limit: int, event_type: str | None = None) -> list[Event]:
         with closing(sqlite3.connect(self.path)) as connection:
             rows = connection.execute("""
                 SELECT payload FROM events
                 WHERE json_extract(payload, '$.simulation') = ?
+                  AND (? IS NULL OR json_extract(payload, '$.event_type') = ?)
                 ORDER BY julianday(json_extract(payload, '$.timestamp')) DESC, rowid DESC
                 LIMIT ?
-            """, (simulation, limit)).fetchall()
+            """, (simulation, event_type, event_type, limit)).fetchall()
         return [Event.model_validate_json(row[0]) for row in rows]
 
     def latest_host_health(self, asset_id: str, simulation: bool) -> Event | None:
