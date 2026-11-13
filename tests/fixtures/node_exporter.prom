@@ -1,0 +1,6 @@
+# Synthetic Node Exporter data
+node_load1 0.35
+node_memory_MemTotal_bytes 8589934592
+node_memory_MemAvailable_bytes 6442450944
+node_boot_time_seconds 1700000000
+process_open_fds 10

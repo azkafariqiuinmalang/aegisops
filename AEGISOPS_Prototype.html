@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AEGISOPS · Prototipe Hackathon</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1119;--panel:#101c28;--line:#283b4c;--text:#eef5fa;--sub:#a8bccd;--green:#63e6bf;--amber:#ffca76}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px 'Inter',system-ui,sans-serif}header{border-bottom:1px solid var(--line);background:#0c1621}header div,main{max-width:1180px;margin:auto;padding:22px clamp(18px,4vw,48px)}header div,.row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:18px;font-weight:850;letter-spacing:.12em}.brand span{color:var(--green)}.badge,.pill{border-radius:30px;padding:5px 11px;background:#1e2b39;font-size:12px;font-weight:700}.badge{color:var(--amber);background:#392d1d}main{padding-top:42px;padding-bottom:54px}h1{font-size:clamp(32px,6vw,52px);letter-spacing:-.05em;margin:0}h2{font-size:20px;margin:0}h3{margin:0;font-size:16px}p{color:var(--sub);line-height:1.55}select{font:inherit;color:var(--text);background:#182839;border:1px solid #365066;border-radius:8px;padding:8px}button{font:inherit;color:var(--text);background:#182839;border:1px solid #365066;border-radius:8px;padding:10px 14px;cursor:pointer}button:hover{background:#253b4d}button:focus-visible,summary:focus-visible{outline:2px solid var(--green);outline-offset:3px}button[aria-pressed=true]{border-color:var(--green);background:#14332f;color:#a9ffdf}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.stats,.workspace{display:grid;gap:14px;margin-bottom:16px}.stats{grid-template-columns:repeat(3,1fr)}.workspace{grid-template-columns:1.15fr 1fr}.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:20px;min-width:0}.stat strong{display:block;font-size:34px;margin-top:8px}.muted,small{color:var(--sub)}.up{color:var(--green)}.warn{color:var(--amber)}.asset{padding:15px 0;border-bottom:1px solid var(--line)}.asset:last-child{border-bottom:0;padding-bottom:0}.meter{width:100%;height:8px;accent-color:var(--green);margin-top:8px}.event{border-left:2px solid #395c6d;padding:0 0 14px 12px;margin:14px 0 0}.event:last-child{padding-bottom:0}.event time{font:12px monospace;color:var(--sub)}.event p{margin:3px 0}.notice{margin-top:16px}.notice p{margin-bottom:0}summary{cursor:pointer;color:var(--green)}footer{color:var(--sub);margin-top:24px;font-size:13px;line-height:1.5}@media(max-width:700px){.workspace{grid-template-columns:1fr}.card{padding:14px}.stats{gap:8px}.stat strong{font-size:26px}}
+</style>
+</head>
+<body>
+<header><div><div class="brand"><span>◆</span> AEGISOPS</div><span class="badge">DATA SIMULASI</span></div></header>
+<main>
+<h1>Monitoring Infrastruktur</h1>
+<p>Pantau kesehatan aset, telusuri event, dan lihat bukti di balik peringatan dini.</p>
+<div class="controls" role="group" aria-label="Skenario demo">
+<button data-case="normal" aria-pressed="true">Operasi normal</button>
+<button data-case="collector" aria-pressed="false">Gangguan collector</button>
+<button data-case="noise" aria-pressed="false">Trafik berulang</button>
+<button data-case="security" aria-pressed="false">Aktivitas mencurigakan</button>
+</div>
+<div class="controls" aria-label="Konfigurasi deteksi">
+<label>Jendela <select id="window"><option value="15">15 detik</option><option value="30">30 detik</option><option value="60" selected>60 detik</option></select></label>
+<label>Ambang SSH <select id="ssh"><option>3</option><option selected>4</option><option>5</option></select></label>
+<label>Ambang port unik <select id="ports"><option>4</option><option selected>5</option><option>6</option></select></label>
+</div>
+<section class="stats" aria-label="Ringkasan" aria-live="polite">
+<div class="card stat"><small>Aset terpantau</small><strong id="asset-count">2</strong></div>
+<div class="card stat"><small>Collector bermasalah</small><strong id="collector-count">0</strong></div>
+<div class="card stat"><small>Temuan skenario</small><strong id="alert-count">0</strong></div>
+</section>
+<div class="workspace">
+<section class="card" aria-labelledby="health-title"><h2 id="health-title">Kesehatan aset</h2>
+<div class="asset">
+<div class="row"><h3>Server Linux</h3><span id="host-state" class="pill up">Up</span></div>
+<p id="host-detail">Node Exporter · Collector sehat</p>
+<div id="host-metrics"><label for="memory">Penggunaan memori <strong>25%</strong></label><progress class="meter" id="memory" max="100" value="25">25%</progress><p>Load 1 menit <strong>0,35</strong></p></div>
+</div>
+<div class="asset"><div class="row"><h3>Gateway lab</h3><span class="pill up">Up</span></div><p>Fixture ICMP · Latency <strong>4,2 ms</strong></p></div>
+</section>
+<section class="card" aria-labelledby="events-title"><div class="row"><h2 id="events-title">Linimasa event</h2><small>Waktu simulasi (UTC)</small></div><div id="events" aria-live="polite"></div></section>
+</div>
+<section class="card" aria-labelledby="alert-title">
+<h2 id="alert-title">Hasil evaluasi</h2>
+<div id="alert" aria-live="polite"></div>
+</section>
+<footer>Prototipe hackathon · Dashboard mengevaluasi fixture sintetis di browser. Backend FastAPI dan SQLite menyediakan ingestion dan evaluasi event secara lokal.</footer>
+</main>
+<script>
+const baseline = [
+  {second: 10, id: 'EVT-002', title: 'Gateway lab merespons', source: 'Fixture ICMP · Latency 4,2 ms'},
+  {second: 0, id: 'EVT-001', title: 'Metrik host diterima', source: 'Fixture Node Exporter · Penggunaan memori 25%'},
+];
+const failure = {second: 30, id: 'EVT-003', title: 'Pengambilan metrik gagal', source: 'Fixture Node Exporter · Timeout'};
+const sourceIp = '198.51.100.25';
+const connection = (index, port) => ({
+  second: 12 + index * 6, id: 'NET-' + (index + 1), type: 'tcp', port,
+  title: 'Koneksi TCP ke port ' + port, source: 'Fixture jaringan · ' + sourceIp + ' → Server Linux',
+});
+const sshFailures = Array.from({length: 4}, (_, index) => ({
+  second: 17 + index * 7, id: 'AUTH-' + (index + 1), type: 'ssh',
+  title: 'Autentikasi SSH gagal', source: 'Fixture autentikasi · ' + sourceIp + ' → Server Linux',
+}));
+const scenarios = {
+  normal: [],
+  collector: [failure],
+  noise: Array.from({length: 5}, (_, index) => connection(index, 443)),
+  security: [22, 80, 443, 8080, 8443].map((port, index) => connection(index, port)).concat(sshFailures),
+};
+const byId = id => document.getElementById(id);
+let activeCase = 'normal';
+function element(tag, text) {
+  const item = document.createElement(tag);
+  item.textContent = text;
+  return item;
+}
+function detect(events, type, threshold, seconds) {
+  const samples = events.filter(event => event.type === type).sort((a, b) => a.second - b.second);
+  for (const sample of samples) {
+    const window = samples.filter(event => event.second <= sample.second && sample.second - event.second <= seconds);
+    const count = type === 'ssh' ? window.length : new Set(window.map(event => event.port)).size;
+    if (count >= threshold) return {count, window};
+  }
+  return null;
+}
+function render(name) {
+  activeCase = name;
+  const failed = name === 'collector';
+  const seconds = Number(byId('window').value);
+  const events = [...scenarios[name], ...baseline];
+  const rules = [
+    ['ssh', 'DET-001', 'Kegagalan SSH berulang', 'kegagalan', 'Periksa log autentikasi host dan sumber koneksi.'],
+    ['tcp', 'DET-002', 'Indikasi koneksi ke banyak port', 'port unik', 'Periksa apakah pola berasal dari pemantauan atau layanan yang dikenal.'],
+  ];
+  const findings = [];
+  for (const [type, id, title, unit, action] of rules) {
+    const threshold = Number(byId(type === 'ssh' ? 'ssh' : 'ports').value);
+    const result = detect(events, type, threshold, seconds);
+    if (result) {
+      const evidence = result.window.map(event => event.id).join(', ');
+      findings.push([id + ' · ' + title, result.count + ' ' + unit + ' dalam jendela ' + seconds + ' detik (ambang ' + threshold + '). Bukti: ' + evidence + '.', action]);
+    }
+  }
+  if (failed) findings.push(['Gangguan collector', 'EVT-003 · Timeout saat mengambil metrik. Kondisi server belum dapat dipastikan.', 'Periksa proses Node Exporter dan endpoint metrik.']);
+  document.querySelectorAll('[data-case]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.case === name));
+  });
+  byId('collector-count').textContent = failed ? '1' : '0';
+  byId('alert-count').textContent = String(findings.length);
+  byId('host-state').textContent = failed ? 'Unknown' : 'Up';
+  byId('host-state').className = failed ? 'pill warn' : 'pill up';
+  byId('host-detail').textContent = failed ? 'Node Exporter · Collector error' : 'Node Exporter · Collector sehat';
+  byId('host-metrics').hidden = failed;
+  byId('events').replaceChildren(...events.sort((a, b) => b.second - a.second).map(event => {
+    const item = document.createElement('article');
+    item.className = 'event';
+    item.append(element('time', '10:15:' + String(event.second).padStart(2, '0') + ' · ' + event.id),
+                element('h3', event.title), element('p', event.source));
+    return item;
+  }));
+  byId('alert').replaceChildren(...(findings.length ? findings.map(([title, evidence, action]) => {
+    const detail = document.createElement('details');
+    detail.className = 'notice';
+    detail.append(element('summary', title), element('p', evidence), element('p', action));
+    return detail;
+  }) : [element('p', 'Ambang deteksi belum terpenuhi pada skenario ini.')]));
+}
+document.querySelectorAll('[data-case]').forEach(button => {
+  button.addEventListener('click', () => render(button.dataset.case));
+});
+for (const id of ['window', 'ssh', 'ports']) byId(id).addEventListener('change', () => render(activeCase));
+render('normal');
+</script>
+</body>
+</html>

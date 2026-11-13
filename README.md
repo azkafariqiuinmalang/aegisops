@@ -52,7 +52,7 @@ Respons menyertakan event sumber yang dapat dibaca melalui `GET /events/{event_i
 
 Tahap ini mencakup satu host Linux melalui Node Exporter. ICMP dan latency perangkat jaringan, SNMP, dashboard, alert, serta autentikasi masih dalam roadmap.
 
-## M3 - Deteksi berbasis event
+## M3 — Deteksi berbasis event
 
 Buka `AEGISOPS_Prototype.html` di browser untuk mencoba empat skenario sintetis. Pilih **Aktivitas mencurigakan** untuk melihat bukti per aturan, lalu ubah jendela dan ambang. Skenario **Trafik berulang** memakai lima koneksi ke satu port, sehingga jumlah port uniknya tetap satu. Dashboard menghitung aturan atas fixture lokal di browser.
 
@@ -65,4 +65,3 @@ Jalankan API lokal dengan perintah setup di atas dan gunakan Swagger di `http://
 DET-001 mencari empat kegagalan SSH dari IP sumber yang sama pada satu aset dalam 60 detik. DET-002 mencari lima port TCP tujuan unik dari IP sumber yang sama ke satu IP tujuan pada satu aset dalam 60 detik. Keduanya mengevaluasi data aktual dan simulasi secara terpisah.
 
 Endpoint menerima record terstruktur dari feed yang sudah diproses. Adapter live untuk Wazuh/journald dan sensor pasif Zeek/Suricata masih perlu diintegrasikan dan diuji. Tampilan dashboard hackathon berjalan dengan fixture. Penyimpanan alert, korelasi lintas sumber, dan lifecycle tindak lanjut masuk M4.
-

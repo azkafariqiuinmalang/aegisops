@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "timestamp": "2026-11-12T17:15:30+07:00",
+  "source": {"type": "fixture", "name": "auth-lab", "event_id": "ssh-failure-001"},
+  "category": "authentication",
+  "event_type": "ssh_login_failed",
+  "status": "simulated",
+  "simulation": true,
+  "severity": "low",
+  "asset": {"asset_id": "server-lab", "ip": ["192.0.2.10"]},
+  "network": {"src_ip": "198.51.100.25", "dst_port": 22, "protocol": "tcp"},
+  "labels": ["simulated"]
+}
