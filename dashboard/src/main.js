@@ -40,7 +40,9 @@ async function refreshBackend() {
     backendData = snapshot;
   } catch (error) {
     if (request.signal.aborted) return;
-    backendData = {error: 'Data backend gagal dimuat (' + error.message + ').'};
+    backendData = {error: error.message === 'HTTP 404'
+      ? 'Backend tidak aktif pada demo publik ini. Pilih "Demo browser" untuk menjalankan alur lengkap.'
+      : 'Data backend gagal dimuat (' + error.message + ').'};
   }
   if (!request.signal.aborted && dataMode !== 'demo') render();
 }
