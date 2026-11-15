@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aegisops
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn aegisops.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/dashboard?simulation=true&limit=1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: AEGISOPS_DB_PATH
+        value: var/aegisops.sqlite3
+      - key: AEGISOPS_SEED_DEMO
+        value: "1"

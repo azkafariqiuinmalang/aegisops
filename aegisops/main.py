@@ -15,6 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from .detection import DetectionPolicy, Finding, evaluate
 from .host_health import HostHealth, health_view
 from .models import Asset, Event, EventInput, Model
+from .seed import seed_if_empty
 from .security_events import SSHFailure, TCPConnection
 from .store import EventStore
 from .wokwi import WokwiReading, save_reading, start_mqtt
@@ -54,6 +55,8 @@ def create_app(database_path: Path) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         await run_in_threadpool(store.initialize)
+        if os.environ.get('AEGISOPS_SEED_DEMO') == '1':
+            await run_in_threadpool(seed_if_empty, store)
         mqtt = start_mqtt(store)
         try:
             yield
