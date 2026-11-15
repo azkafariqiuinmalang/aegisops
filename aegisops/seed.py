@@ -6,6 +6,7 @@ All generated data is marked as simulation so the dashboard keeps its
 """
 
 import logging
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -29,6 +30,24 @@ def _security_event(*, timestamp: datetime, record_id: str, event_type: str, cat
     )
 
 
+def _metrics_fixture() -> Path | None:
+    """Return a metrics fixture, generating one when the repo copy is unavailable."""
+    if FIXTURE.is_file():
+        return FIXTURE
+    try:
+        target = Path(tempfile.gettempdir()) / 'aegisops_node_exporter.prom'
+        boot_time = int(datetime.now(timezone.utc).timestamp()) - 86400
+        target.write_text(
+            'node_load1 0.35\n'
+            'node_memory_MemTotal_bytes 8589934592\n'
+            'node_memory_MemAvailable_bytes 6442450944\n'
+            f'node_boot_time_seconds {boot_time}\n',
+            encoding='utf-8')
+        return target
+    except OSError:
+        return None
+
+
 def seed_if_empty(store: EventStore) -> bool:
     """Store the demo dataset once; returns True when seeding happened."""
     if store.list_assets():
@@ -48,9 +67,10 @@ def seed_if_empty(store: EventStore) -> bool:
             category='network', source_type='network_metadata',
             network=Network(src_ip='198.51.100.77', dst_ip='192.0.2.10',
                             dst_port=port, protocol='tcp')))
-    if FIXTURE.is_file():
+    fixture = _metrics_fixture()
+    if fixture is not None:
         try:
-            store.save(collect(DEMO_ASSET, fixture=FIXTURE), host_health=True)
+            store.save(collect(DEMO_ASSET, fixture=fixture), host_health=True)
         except Exception:  # pragma: no cover - seeding must never block startup
             logger.warning('demo_seed_health_failed', exc_info=True)
     logger.info('demo_seed_complete')

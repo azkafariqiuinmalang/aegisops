@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "aegisops": {
+      "root": ".",
+      "framework": "fastapi",
+      "entrypoint": "app:app"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": { "service": "aegisops" } }
+  ]
+}

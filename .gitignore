@@ -4,3 +4,5 @@ var/
 .env
 .env.*
 !.env.example
+.vercel
+.env*

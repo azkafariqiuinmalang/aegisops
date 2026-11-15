@@ -1,0 +1,14 @@
+.venv/
+var/
+submission/
+__pycache__/
+*.pyc
+capture.py
+capture2.py
+capture_backend.py
+thumbnail.py
+export_shots.py
+seed-demo.ps1
+live_check.py
+.env
+.env.*
